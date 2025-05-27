@@ -12,24 +12,323 @@
             margin: 0 auto;
             padding: 20px;
             color: #333;
+            background: linear-gradient(135deg, #E5FCFF 0%, #E5EFFF 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+        
         h1 {
             color: #2c3e50;
+            margin-bottom: 20px;
         }
+        
+        .redirect-section {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #E5FCFF;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #E5FCFF;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #E5FCFF;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 10px;
+            transition: background 0.3s ease;
+        }
+        
+        .btn:hover {
+            background: #5a67d8;
+        }
+        
+        .error {
+            color: #e74c3c;
+            background: #fdf2f2;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #e74c3c;
+            margin: 15px 0;
+        }
+        
+        .success {
+            color: #27ae60;
+            background: #f0fff4;
+            padding: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #27ae60;
+            margin: 15px 0;
+        }
+        
         footer {
             margin-top: 30px;
             font-size: 0.8em;
             color: #7f8c8d;
+            text-align: center;
+        }
+        
+        .fallback-links {
+            margin-top: 20px;
+            padding: 20px;
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 8px;
+        }
+        
+        .app-icon {
+            width: 64px;
+            height: 64px;
+            background: #E5FCFF;
+            border-radius: 12px;
+            display: inline-block;
+            margin: 10px;
+            position: relative;
+        }
+        
+        .app-icon::before {
+            content: "📱";
+            font-size: 32px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
         }
     </style>
 </head>
 <body>
-    <h1>Developer Website</h1>
-    <p>This site hosts verification files for mobile applications.</p>
-    <p>This page supports the AdMob integration for our mobile applications.</p>
+    <div class="container">
+        <div class="app-icon"></div>
+        <h1>App Developer Site</h1>
+        
+        <div id="default-content">
+            <p>This site hosts verification files for mobile applications.</p>
+            <p>This page supports the AdMob integration for our mobile applications.</p>
+        </div>
+        
+        <div id="redirect-content" class="redirect-section" style="display: none;">
+            <div id="loading-state">
+                <div class="loading"></div>
+                <p>Processing your request and opening the app...</p>
+            </div>
+            
+            <div id="success-state" style="display: none;" class="success">
+                <h3>✅ Redirecting to App</h3>
+                <p>If the app didn't open automatically, click the button below:</p>
+                <a id="manual-redirect" href="#" class="btn">Open in App</a>
+            </div>
+            
+            <div id="error-state" style="display: none;" class="error">
+                <h3>❌ Unable to Open App</h3>
+                <p id="error-message">The app might not be installed on your device.</p>
+            </div>
+            
+            <div class="fallback-links">
+                <h4>Don't have the app?</h4>
+                <a href="https://play.google.com/store" class="btn">Download from Play Store</a>
+                <a href="https://apps.apple.com" class="btn">Download from App Store</a>
+            </div>
+        </div>
+    </div>
     
     <footer>
         <p>© 2025 App Developer. All rights reserved.</p>
     </footer>
+
+    <script>
+        // Configuration - Update these with your actual values
+        const APP_CONFIG = {
+            // Your app's custom URL scheme (from app.json/app.config.js)
+            customScheme: 'sumzup', // e.g., 'myapp'
+            
+            // Your app's package name (Android) and bundle ID (iOS)
+            androidPackage: 'com.sumzup.sumzup',
+            iosBundleId: 'com.sumzup.sumzup',
+            
+            // Fallback URLs
+            playStoreUrl: 'https://play.google.com/store/apps/details?id=com.sumzup.sumzup',
+////////////// add later: appStoreUrl: 'https://apps.apple.com/app/your-app/id123456789'
+        };
+
+        function getUrlParams() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return {
+                mode: urlParams.get('mode'),
+                oobCode: urlParams.get('oobCode'),
+                apiKey: urlParams.get('apiKey'),
+                continueUrl: urlParams.get('continueUrl'),
+                lang: urlParams.get('lang') || 'en'
+            };
+        }
+
+        function isValidFirebaseAction(params) {
+            return params.mode && params.oobCode && 
+                   ['resetPassword', 'verifyEmail', 'verifyAndChangeEmail'].includes(params.mode);
+        }
+
+        function buildDeepLink(params) {
+            // Build the deep link URL that matches your app's URL handling
+            const baseUrl = `${APP_CONFIG.customScheme}://auth`;
+            const queryString = new URLSearchParams({
+                mode: params.mode,
+                oobCode: params.oobCode,
+                ...(params.apiKey && { apiKey: params.apiKey }),
+                ...(params.continueUrl && { continueUrl: params.continueUrl }),
+                ...(params.lang && { lang: params.lang })
+            }).toString();
+            
+            return `${baseUrl}?${queryString}`;
+        }
+
+        function buildUniversalLink(params) {
+            // Alternative universal link format
+            const baseUrl = `https://${window.location.hostname}`;
+            const queryString = new URLSearchParams(params).toString();
+            return `${baseUrl}/app?${queryString}`;
+        }
+
+        function detectDevice() {
+            const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+            
+            if (/android/i.test(userAgent)) {
+                return 'android';
+            }
+            
+            if (/iPad|iPhone|iPod/.test(userAgent) && !window.MSStream) {
+                return 'ios';
+            }
+            
+            return 'unknown';
+        }
+
+        function updateFallbackLinks() {
+            const fallbackSection = document.querySelector('.fallback-links');
+            const playStoreLink = fallbackSection.querySelector('a[href*="play.google.com"]');
+            const appStoreLink = fallbackSection.querySelector('a[href*="apps.apple.com"]');
+            
+            if (playStoreLink) playStoreLink.href = APP_CONFIG.playStoreUrl;
+            if (appStoreLink) appStoreLink.href = APP_CONFIG.appStoreUrl;
+        }
+
+        function showState(stateId) {
+            // Hide all states
+            ['loading-state', 'success-state', 'error-state'].forEach(id => {
+                const element = document.getElementById(id);
+                if (element) element.style.display = 'none';
+            });
+            
+            // Show the requested state
+            const element = document.getElementById(stateId);
+            if (element) element.style.display = 'block';
+        }
+
+        function attemptRedirect(deepLink, params) {
+            const device = detectDevice();
+            let redirected = false;
+            
+            // Set up timeout to show error if redirect fails
+            const timeout = setTimeout(() => {
+                if (!redirected) {
+                    showState('error-state');
+                    document.getElementById('error-message').textContent = 
+                        `Unable to open the app automatically. Make sure the app is installed on your ${device} device.`;
+                }
+            }, 3000);
+            
+            // Attempt to redirect
+            try {
+                if (device === 'android') {
+                    // For Android, try intent URL first, then custom scheme
+                    const intentUrl = `intent://auth?${new URLSearchParams(params).toString()}#Intent;scheme=${APP_CONFIG.customScheme};package=${APP_CONFIG.androidPackage};end`;
+                    window.location.href = intentUrl;
+                    
+                    // Fallback to custom scheme after a brief delay
+                    setTimeout(() => {
+                        window.location.href = deepLink;
+                    }, 500);
+                } else {
+                    // For iOS and others, use custom scheme directly
+                    window.location.href = deepLink;
+                }
+                
+                // If we get here, assume success
+                setTimeout(() => {
+                    clearTimeout(timeout);
+                    redirected = true;
+                    showState('success-state');
+                    document.getElementById('manual-redirect').href = deepLink;
+                }, 1000);
+                
+            } catch (error) {
+                clearTimeout(timeout);
+                console.error('Redirect error:', error);
+                showState('error-state');
+                document.getElementById('error-message').textContent = 
+                    'An error occurred while trying to open the app.';
+            }
+        }
+
+        // Main execution
+        document.addEventListener('DOMContentLoaded', function() {
+            const params = getUrlParams();
+            
+            // Update fallback links with actual store URLs
+            updateFallbackLinks();
+            
+            // Check if this is a Firebase auth action
+            if (isValidFirebaseAction(params)) {
+                // Show redirect interface
+                document.getElementById('default-content').style.display = 'none';
+                document.getElementById('redirect-content').style.display = 'block';
+                
+                // Build deep link
+                const deepLink = buildDeepLink(params);
+                console.log('Generated deep link:', deepLink);
+                
+                // Attempt redirect after a short delay
+                setTimeout(() => {
+                    attemptRedirect(deepLink, params);
+                }, 1000);
+            }
+        });
+
+        // Handle manual redirect button click
+        document.addEventListener('click', function(e) {
+            if (e.target.id === 'manual-redirect') {
+                e.preventDefault();
+                const params = getUrlParams();
+                const deepLink = buildDeepLink(params);
+                attemptRedirect(deepLink, params);
+            }
+        });
+    </script>
 </body>
 </html>

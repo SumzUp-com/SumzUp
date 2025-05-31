@@ -196,7 +196,7 @@
 
         function buildDeepLink(params) {
             // Build the deep link URL that matches your app's URL handling
-            const baseUrl = params.mode === 'resetPassword' ? `${APP_CONFIG.customScheme}://` : `${APP_CONFIG.customScheme}://(protected)/profile`;
+            const baseUrl = `${APP_CONFIG.customScheme}://`;
             const queryString = new URLSearchParams({
                 mode: params.mode,
                 oobCode: params.oobCode,
@@ -267,7 +267,7 @@
             try {
                 if (device === 'android') {
                     // For Android, try intent URL first, then custom scheme
-                    const intentUrl = `intent://auth?${new URLSearchParams(params).toString()}#Intent;scheme=${APP_CONFIG.customScheme};package=${APP_CONFIG.androidPackage};end`;
+                    const intentUrl = `intent://?${new URLSearchParams(params).toString()}#Intent;scheme=${APP_CONFIG.customScheme};package=${APP_CONFIG.androidPackage};end`;
                     window.location.href = intentUrl;
                     
                     // Fallback to custom scheme after a brief delay
